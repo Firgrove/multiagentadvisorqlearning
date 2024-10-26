@@ -16,6 +16,38 @@ sess = tf.Session()
 def make_np_float(feature):
     return np.array(feature).astype(np.float32)
 
+def simplify_state(state):
+    board = state["board"].reshape(-1).astype(np.float32)
+    position = make_np_float(state["position"])
+
+    enemies = []
+    for enemy in state['enemies']:
+        coords = np.argwhere(state['board'] == enemy.value).tolist()
+        for coord in coords:
+            enemies.append(coord)
+    if len(enemies) < 2:
+        enemies = enemies + [[-1, -1]]*(3 - len(enemies))
+    enemies = np.array(enemies).reshape(-1)
+
+    bombs = []
+    bomb_list = np.argwhere(state["bomb_life"] != 0).tolist()
+    for bomb_coords in bomb_list:
+        bomb = bomb_coords
+        bomb += [state["bomb_life"][bomb_coords[0], bomb_coords[1]]]
+        bombs.append(bomb)
+    
+    while len(bombs) < 5:
+        bombs += [[-1, -1, -1]]
+    bombs = np.array(bombs).reshape(-1)
+
+    new_state = np.concatenate((board, position, enemies, bombs))
+    if new_state.shape[0] != 87:
+        print('board', board)
+        print('position', position)
+        print('enemies', enemies)
+        print('bombs', bombs)
+        raise ValueError()
+    return new_state
 
 def featurize(obs):
     board = obs["board"].reshape(-1).astype(np.float32)
@@ -53,7 +85,7 @@ env.seed(1)
 def compute_advisor_correct(row):
     state = np.array(row['State'])
     a2 = row['action2']
-    best_action = agent_list[0].act3(state, a2)
+    best_action = agent_list[1].act3(state, a2)
     for i in range(4):
         if row[f'Advisor{i}_action'] == best_action:
             row[f'Advisor{i}_correct'] = 1
@@ -68,13 +100,13 @@ def main():
     with open('pommermanonevsonecustomallvs1_rewards.csv', 'w+') as myfile:
         myfile.write('{0}|{1}|{2}\n'.format("Episode", "Reward1(MAD)","Reward2(ExpertQ)"))
     with open('pommermanonevsonecustomallvs1_states.csv', 'w+') as myfile:
-        myfile.write('{0}|{1}|{2}|{3}|{4}|{5}|{6}|{7}|{8}|{9}\n'.format("State", "action2", "Advisor0_action", "Advisor1_action", "Advisor2_action", "Advisor3_action", "Advisor0_correct", "Advisor1_correct", "Advisor2_correct", "Advisor3_correct"))
-    results = pd.DataFrame(columns=["State", "action2", "Advisor0_action", "Advisor1_action", "Advisor2_action", "Advisor3_action", "Advisor0_correct", "Advisor1_correct", "Advisor2_correct", "Advisor3_correct"])
+        myfile.write('{0}|{1}|{2}|{3}|{4}|{5}|{6}|{7}|{8}|{9}|{10}\n'.format("State_small", "State", "action2", "Advisor0_action", "Advisor1_action", "Advisor2_action", "Advisor3_action", "Advisor0_correct", "Advisor1_correct", "Advisor2_correct", "Advisor3_correct"))
+    results = pd.DataFrame(columns=["State_small", "State", "action2", "Advisor0_action", "Advisor1_action", "Advisor2_action", "Advisor3_action", "Advisor0_correct", "Advisor1_correct", "Advisor2_correct", "Advisor3_correct"])
 
     cumulative_rewards = []
     cumulative_rewards.append(0)
     cumulative_rewards.append(0)
-    for i_episode in range(20000):
+    for i_episode in range(15000):
         state = env.reset()
 
 
@@ -98,8 +130,10 @@ def main():
 
             # Format state so we can print to csv
             state0 = featurize(state[0]).tolist()
+            state_small = simplify_state(state[0]).tolist()
 
             row = {
+                'State_small': state_small,
                 'State': state0,
                 'action2': a2,
                 "Advisor0_action": advisor_actions[0], 
@@ -123,7 +157,7 @@ def main():
 
         if i_episode % 40 == 0:
             results.to_csv('pommermanonevsonecustomallvs1_states.csv', mode='a', index=False, header=False, sep='|')
-            results = pd.DataFrame(columns=["State", "action2", "Advisor0_action", "Advisor1_action", "Advisor2_action", "Advisor3_action", "Advisor0_correct", "Advisor1_correct", "Advisor2_correct", "Advisor3_correct"])
+            results = pd.DataFrame(columns=["State_small", "State", "action2", "Advisor0_action", "Advisor1_action", "Advisor2_action", "Advisor3_action", "Advisor0_correct", "Advisor1_correct", "Advisor2_correct", "Advisor3_correct"])
     
         
         print('Episode {} finished'.format(i_episode))
@@ -135,11 +169,11 @@ def main():
 
     # Compute advisor correct using chunks. Otherwise not enough ram
     with open('pommermanonevsonecustomallvs1_states_final.csv', 'w+') as myfile:
-        myfile.write('{0}|{1}|{2}|{3}|{4}|{5}|{6}|{7}|{8}|{9}\n'.format("State", "action2", "Advisor0_action", "Advisor1_action", "Advisor2_action", "Advisor3_action", "Advisor0_correct", "Advisor1_correct", "Advisor2_correct", "Advisor3_correct"))
+        myfile.write('{0}|{1}|{2}|{3}|{4}|{5}|{6}|{7}|{8}|{9}|{10}\n'.format("State_small", "State", "action2", "Advisor0_action", "Advisor1_action", "Advisor2_action", "Advisor3_action", "Advisor0_correct", "Advisor1_correct", "Advisor2_correct", "Advisor3_correct"))
     replay = pd.read_csv('pommermanonevsonecustomallvs1_states.csv', delimiter='|', chunksize=1000, converters={'State': literal_eval})
     for chunk in tqdm(replay):
         chunk = chunk.apply(compute_advisor_correct, axis=1)
-        print(chunk)
+        # print(chunk)
         chunk.to_csv('pommermanonevsonecustomallvs1_states_final.csv', mode='a', index=False, header=False, sep='|')
 
 
