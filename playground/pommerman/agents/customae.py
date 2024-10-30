@@ -79,16 +79,16 @@ class Advisor1admiralae(BaseAgent):
         self.action_space = 6
         self.action2 = 0
 
-    def act(self, obs, action_space):         
+    def act(self, obs, action_space):
+        # Random action         
         if (np.random.uniform() <= 0.5):
             return self.act2(obs, action_space)
         
+        # Choosing from Q table or advisor?
         else:
             obs = featurize(obs)
             return self.RL.choose_action(obs, self.action2)
 
-    def act3(self, obs, action2):
-        return self.RL.choose_action(obs, action2)
 
     def store(self, obs, act, act_other, reward, obs_, act_, act_other_):
         obs = featurize(obs)

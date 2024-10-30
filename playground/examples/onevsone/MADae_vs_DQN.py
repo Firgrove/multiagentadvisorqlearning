@@ -69,7 +69,7 @@ def featurize(obs):
 
 agent_list = [
     agents.Advisor_all_custom_ae(201, sess),
-    agents.Advisor_all_custom_ae2(201, sess),
+    agents.DQNAgent(201, sess),
 ]
 
 sess.run(tf.global_variables_initializer())
@@ -115,12 +115,9 @@ def main():
             actions_new = env.act(state_new) 
             actions2_c = agent_list[0].act2(state_new[0], env.action_space)
             actions_c = agent_list[0].act2(state_new[1], env.action_space) 
-            actions2_ = agent_list[1].act2(state_new[0], env.action_space)
-            actions_ = agent_list[1].act2(state_new[1], env.action_space)
             agent_list[0].store(state[0], actions[0], actions[1], reward[0], state_new[0], actions2_c, actions_c)
-            agent_list[1].store(state[1], actions[1], actions[0], reward[1], state_new[1], actions_, actions2_)
+            agent_list[1].store(state[1], actions[1], reward[1], state_new[1])
             agent_list[0].set(actions2_c)
-            agent_list[1].set(actions2_)
             state = state_new
             actions = actions_new
 

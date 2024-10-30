@@ -14,7 +14,7 @@ def main():
         agents.DeepsarsaAgent(201, sess),
         agents.Advisor1admiralae(201, sess),
     ]
-    env = pommerman.make('OneVsOne-v0', agent_list)
+    env = pommerman.make('OneVsOne-v0', agent_list, render_mode='human')
 
     env.seed(1)
     

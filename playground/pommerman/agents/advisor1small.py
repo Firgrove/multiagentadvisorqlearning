@@ -102,7 +102,7 @@ class Advisor1small(BaseAgent):
 
 
 
-
+    # Seems like has some advisor stuff since it uses djikstra etc
     def act(self, obs, action_space):        
         if self.epsilon_arbitrary == True:
             self.counter = self.counter + 1
@@ -117,6 +117,7 @@ class Advisor1small(BaseAgent):
             elif(self.counter >= 80000):
                 self.epsilon = 1
             
+            # Advisor action or choose action
             if (np.random.uniform() > self.epsilon):
                 return self.act2(obs, action_space)
             else:
@@ -130,6 +131,8 @@ class Advisor1small(BaseAgent):
                 obs = featurize(obs)
                 return self.RL.choose_action(obs, self.action2)
     
+    def act3(self, obs, action2):
+        return self.RL.choose_action(obs, action2)
     
     def store(self, obs, act, act_other, act_new_other, reward, obs_, act_):
         obs = featurize(obs)
@@ -151,6 +154,7 @@ class Advisor1small(BaseAgent):
     def save_model(self,s):
         self.RL.save_model(s)
     
+    # Advisor action
     def act2(self, obs, action_space):
         def convert_bombs(bomb_map):
             '''Flatten outs the bomb array'''

@@ -78,6 +78,7 @@ class Advisor_all_custom_ae2(BaseAgent):
 
         self.action_space = 6
         self.action2 = 0
+        self.prev_advisor = -1
 
     def act(self, obs, action_space, no_advisor=False):         
         if (np.random.uniform() <= 0.5 and not no_advisor):
@@ -123,7 +124,7 @@ class Advisor_all_custom_ae2(BaseAgent):
                 })
             return ret
 
-        advisor_actions = [-1]*3
+        advisor_actions = [-1]*5
         my_position = tuple(obs['position'])
         board = np.array(obs['board'])
         bombs = convert_bombs(np.array(obs['bomb_blast_strength']))
@@ -133,154 +134,61 @@ class Advisor_all_custom_ae2(BaseAgent):
         items, dist, prev = self._djikstra(
             board, my_position, bombs, enemies, depth=10)
         
-        directions = [
+        directions_all = [
                 constants.Action.Stop, constants.Action.Left,
                 constants.Action.Right, constants.Action.Up, constants.Action.Down
         ]
+
+
+        # Advisor 0 - Move if we are in an unsafe place.
+        unsafe_directions = self._directions_in_range_of_bomb(
+            board, my_position, bombs, dist)
+        if unsafe_directions:
+            directions = self._find_safe_directions(
+                board, my_position, unsafe_directions, bombs, enemies)
+            advisor_actions[0] = random.choice(directions).value
+
         
-        # Advisor 0 - left expert
-        if my_position[0] <= 5:
-            # Move if we are in an unsafe place.
-            unsafe_directions = self._directions_in_range_of_bomb(
-                board, my_position, bombs, dist)
-            if unsafe_directions:
-                directions = self._find_safe_directions(
-                    board, my_position, unsafe_directions, bombs, enemies)
-                advisor_actions[0] = random.choice(directions).value
+        # Advisor 1 - Lay pomme if we are adjacent to an enemy.
+        if self._is_adjacent_enemy(items, dist, enemies) and self._maybe_bomb(
+                ammo, blast_strength, items, dist, my_position):
+            advisor_actions[1] = constants.Action.Bomb.value
 
-            #Lay pomme if we are adjacent to an enemy.
-            if self._is_adjacent_enemy(items, dist, enemies) and self._maybe_bomb(
-                    ammo, blast_strength, items, dist, my_position):
-                advisor_actions[0] = constants.Action.Bomb.value
+        # Move towards an enemy if there is one in exactly three reachable spaces.
+        direction = self._near_enemy(my_position, items, dist, prev, enemies, 3)
+        if direction is not None and (self._prev_direction != direction or
+                                      random.random() < .5):
+            self._prev_direction = direction
+            advisor_actions[1] = direction.value
 
-            # Move towards an enemy if there is one in exactly three reachable spaces.
-            direction = self._near_enemy(my_position, items, dist, prev, enemies, 3)
-            if direction is not None and (self._prev_direction != direction or
-                                        random.random() < .5):
-                self._prev_direction = direction
-                advisor_actions[0] = direction.value
+        # Advisor 2 - Move towards a good item if there is one within two reachable spaces.
+        direction = self._near_good_powerup(my_position, items, dist, prev, 2)
+        if direction is not None:
+            advisor_actions[2] = direction.value
 
+        # Advisor 3 - Totally random
+        advisor_actions[3] = random.choice(directions_all).value
 
-            # Move towards a good item if there is one within two reachable spaces.
-            direction = self._near_good_powerup(my_position, items, dist, prev, 2)
-            if direction is not None:
-                advisor_actions[0] = direction.value
-            
-            
+        # Advisor 4 - Always bad advisor
+        unsafe_directions = self._filter_safe_directions(board, my_position, directions_all, bombs)
+        if len(unsafe_directions) == 0:
+            unsafe_directions = directions_all
+        advisor_actions[4] = random.choice(unsafe_directions).value
 
-            # Choose a random but valid direction.
-            directions = [
-                constants.Action.Stop, constants.Action.Left,
-                constants.Action.Right, constants.Action.Up, constants.Action.Down
-            ]
-            valid_directions = self._filter_invalid_directions(
-                board, my_position, directions, enemies)
-            directions = self._filter_unsafe_directions(board, my_position,
-                                                        valid_directions, bombs)
-            directions = self._filter_recently_visited(
-                directions, my_position, self._recently_visited_positions)
-            if len(directions) > 1:
-                directions = [k for k in directions if k != constants.Action.Stop]
-            if not len(directions):
-                directions = [constants.Action.Stop]
-
-            # Add this position to the recently visited uninteresting positions so we don't return immediately.
-            self._recently_visited_positions.append(my_position)
-            self._recently_visited_positions = self._recently_visited_positions[
-                -self._recently_visited_length:]
-            
-            # For each advisor, if we're not in a state the advisor knows, return a random action from a list of valid actions
-            if not len(valid_directions):
-                valid_directions = [constants.Action.Stop]
-
-            if advisor_actions[0] == -1:
-                advisor_actions[0] = random.choice(valid_directions).value
-
-        # pick a purely random direction
-        else:
-            unsafe_directions = self._filter_safe_directions(board, my_position,
-                                                        directions, bombs)
-            if len(unsafe_directions) == 0:
-                unsafe_directions = directions
-            if advisor_actions[0] == -1:
-                advisor_actions[0] = random.choice(unsafe_directions).value
-
-        # Advisor 2 - right expert
-        if my_position[0] > 5:
-            # Move if we are in an unsafe place.
-            unsafe_directions = self._directions_in_range_of_bomb(
-                board, my_position, bombs, dist)
-            if unsafe_directions:
-                directions = self._find_safe_directions(
-                    board, my_position, unsafe_directions, bombs, enemies)
-                advisor_actions[1] = random.choice(directions).value
-
-            #Lay pomme if we are adjacent to an enemy.
-            if self._is_adjacent_enemy(items, dist, enemies) and self._maybe_bomb(
-                    ammo, blast_strength, items, dist, my_position):
-                advisor_actions[1] = constants.Action.Bomb.value
-
-            # Move towards an enemy if there is one in exactly three reachable spaces.
-            direction = self._near_enemy(my_position, items, dist, prev, enemies, 3)
-            if direction is not None and (self._prev_direction != direction or
-                                        random.random() < .5):
-                self._prev_direction = direction
-                advisor_actions[1] = direction.value
-
-
-            # Move towards a good item if there is one within two reachable spaces.
-            direction = self._near_good_powerup(my_position, items, dist, prev, 2)
-            if direction is not None:
-                advisor_actions[1] = direction.value
-            
-            
-
-            # Choose a random but valid direction.
-            directions = [
-                constants.Action.Stop, constants.Action.Left,
-                constants.Action.Right, constants.Action.Up, constants.Action.Down
-            ]
-            valid_directions = self._filter_invalid_directions(
-                board, my_position, directions, enemies)
-            directions = self._filter_unsafe_directions(board, my_position,
-                                                        valid_directions, bombs)
-            directions = self._filter_recently_visited(
-                directions, my_position, self._recently_visited_positions)
-            if len(directions) > 1:
-                directions = [k for k in directions if k != constants.Action.Stop]
-            if not len(directions):
-                directions = [constants.Action.Stop]
-
-            # Add this position to the recently visited uninteresting positions so we don't return immediately.
-            self._recently_visited_positions.append(my_position)
-            self._recently_visited_positions = self._recently_visited_positions[
-                -self._recently_visited_length:]
-            
-            # For each advisor, if we're not in a state the advisor knows, return a random action from a list of valid actions
-            if not len(valid_directions):
-                valid_directions = [constants.Action.Stop]
-
-            if advisor_actions[1] == -1:
-                advisor_actions[1] = random.choice(valid_directions).value
-
-        # pick an unsafe direction if available, otherwise truly random
-        else:
-            unsafe_directions = self._filter_safe_directions(board, my_position,
-                                                        directions, bombs)
-            if len(unsafe_directions) == 0:
-                unsafe_directions = directions
-            if advisor_actions[1] == -1:
-                advisor_actions[1] = random.choice(unsafe_directions).value
-
-        # Advisor 2 - Totally random
-        advisor_actions[2] = random.choice(directions).value
+        for i in range(len(advisor_actions)):
+            if advisor_actions[i] == -1:
+                advisor_actions[i] = random.choice(directions_all).value
 
         return advisor_actions
     
-
+    def get_last_advisor(self):
+        return self.prev_advisor
     
     def act2(self, obs, action_space):
-        return random.choice(self.get_advisor_actions(obs))
+        advisor_actions = self.get_advisor_actions(obs)
+        i = random.choice(range(len(advisor_actions)))
+        self.prev_advisor = i
+        return advisor_actions[i]
 
     def act3(self, obs, action2):
         return self.RL.choose_action(obs, action2)

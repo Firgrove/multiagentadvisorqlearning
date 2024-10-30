@@ -1,5 +1,5 @@
 from . import BaseAgent
-from RL_brain_admiralae import AdmiralaeNetwork
+from RL_brain_admiralae_custom import AdmiralaeNetwork
 from .. import characters
 import os
 import sys
@@ -62,9 +62,9 @@ def featurize(obs):
 
 
 
-class Advisor1admiralae(BaseAgent):
+class Advisor_near_bomb_ae(BaseAgent):
     def __init__(self, nf, sess, *args, **kwargs):
-        super(Advisor1admiralae, self).__init__(*args, **kwargs)
+        super(Advisor_near_bomb_ae, self).__init__(*args, **kwargs)
         self._recently_visited_positions = []
         self._recently_visited_length = 6
         self._prev_direction = None    
@@ -87,8 +87,6 @@ class Advisor1admiralae(BaseAgent):
             obs = featurize(obs)
             return self.RL.choose_action(obs, self.action2)
 
-    def act3(self, obs, action2):
-        return self.RL.choose_action(obs, action2)
 
     def store(self, obs, act, act_other, reward, obs_, act_, act_other_):
         obs = featurize(obs)
@@ -138,22 +136,22 @@ class Advisor1admiralae(BaseAgent):
             return random.choice(directions).value
 
         
-        # Lay pomme if we are adjacent to an enemy.
-        if self._is_adjacent_enemy(items, dist, enemies) and self._maybe_bomb(
-                ammo, blast_strength, items, dist, my_position):
-            return constants.Action.Bomb.value
+        # #Lay pomme if we are adjacent to an enemy.
+        # if self._is_adjacent_enemy(items, dist, enemies) and self._maybe_bomb(
+        #         ammo, blast_strength, items, dist, my_position):
+        #     return constants.Action.Bomb.value
 
-        # Move towards an enemy if there is one in exactly three reachable spaces.
-        direction = self._near_enemy(my_position, items, dist, prev, enemies, 3)
-        if direction is not None and (self._prev_direction != direction or
-                                      random.random() < .5):
-            self._prev_direction = direction
-            return direction.value
+        # # Move towards an enemy if there is one in exactly three reachable spaces.
+        # direction = self._near_enemy(my_position, items, dist, prev, enemies, 3)
+        # if direction is not None and (self._prev_direction != direction or
+        #                               random.random() < .5):
+        #     self._prev_direction = direction
+        #     return direction.value
 
-        # Move towards a good item if there is one within two reachable spaces.
-        direction = self._near_good_powerup(my_position, items, dist, prev, 2)
-        if direction is not None:
-            return direction.value
+        # # Move towards a good item if there is one within two reachable spaces.
+        # direction = self._near_good_powerup(my_position, items, dist, prev, 2)
+        # if direction is not None:
+        #     return direction.value
         
         
 
@@ -521,30 +519,4 @@ class Advisor1admiralae(BaseAgent):
         if not ret:
             ret = directions
         return ret
-
-
-
-
-
-
-
-
-    
-
-
-
-
-
-
-
-
-
-
-    
-
-
-
-
-
-
 

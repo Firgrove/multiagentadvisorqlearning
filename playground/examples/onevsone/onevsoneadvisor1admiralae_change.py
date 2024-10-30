@@ -9,10 +9,9 @@ def main():
     print(pommerman.REGISTRY)
 
     sess = tf.Session()
-    print(f'>>>>>>>>>>>>>>>>>>>>>> {sess}')
 
     agent_list = [
-        agents.DQNAgent(201, sess),
+        agents.Advisor_near_enemy_ae(201, sess),
         agents.Advisor1admiralae(201, sess),
     ]
 
@@ -27,7 +26,7 @@ def main():
     cumulative_rewards = []
     cumulative_rewards.append(0)
     cumulative_rewards.append(0)
-    for i_episode in range(100000):
+    for i_episode in range(10000):
         state = env.reset()
         done = False
         actions = env.act(state)    
@@ -36,7 +35,7 @@ def main():
             actions_new = env.act(state_new)    
             actions2_ = agent_list[1].act2(state_new[0], env.action_space)
             actions_ = agent_list[1].act2(state_new[1], env.action_space)
-            agent_list[0].store(state[0], actions[0], reward[0], state_new[0])
+            agent_list[0].store(state[0], actions[0], actions[1], reward[0], state_new[0], actions2_, actions_)
             agent_list[1].store(state[1], actions[1], actions[0], reward[1], state_new[1], actions_, actions2_)
             agent_list[1].set(actions2_)
             state = state_new

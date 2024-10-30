@@ -71,43 +71,42 @@ def featurize(obs):
 
     return np.concatenate((board, bomb_blast_strength, bomb_life, position, ammo, blast_strength, can_kick, teammate, enemies))
 
-episodes = 40000
+episodes = 50000
 
 agent_list = [
     agents.MADdm(201, sess, episodes-10000),
-    agents.MADdm_random(201, sess, episodes-10000),
+    agents.DQNAgent(201, sess)
 ]
 
 sess.run(tf.global_variables_initializer())
 env = pommerman.make('OneVsOne-v0', agent_list)
 env.seed(1)
 
-
-
 def main():
     print(pommerman.REGISTRY)
     
     
     
-    with open('MADdm_vs_random_train.csv', 'w+') as myfile:
-        myfile.write('{0}|{1}|{2}|{3}\n'.format("Episode", "Reward1(MAD_DM)","Reward2(MAD_Random)","epsilon"))
+    with open('MADdm_vs_DQN_train.csv', 'w+') as myfile:
+        myfile.write('{0}|{1}|{2}|{3}|{4}\n'.format("Episode", "Reward1(MAD_DM)","Reward2(DQN)","epsilon", "turns"))
 
     cumulative_rewards = []
     cumulative_rewards.append(0)
     cumulative_rewards.append(0)
+    turns_to_complete = []
     for i_episode in range(episodes):
         state = env.reset()
 
-
+        turns = 0
         done = False
         actions = env.act(state)    
         while not done:
+            turns += 1
             state_new, reward, done, info = env.step(actions)
             actions_new = env.act(state_new) 
             agent_list[0].store(state[0], actions[0], actions[1], actions_new[1], reward[0], state_new[0], actions_new[0])
-            agent_list[1].store(state[1], actions[1], actions[0], actions_new[0], reward[1], state_new[1], actions_new[1])
+            agent_list[1].store(state[1], actions[1], reward[1], state_new[1])
             agent_list[0].set(actions_new[1])
-            agent_list[1].set(actions_new[0])
             state = state_new
             actions = actions_new
 
@@ -115,26 +114,25 @@ def main():
         cumulative_rewards[0] = cumulative_rewards[0] + reward[0]
         cumulative_rewards[1] = cumulative_rewards[1] + reward[1]
 
-        if i_episode < episodes - 10000: 
+        if i_episode < episodes-10000: 
             agent_list[0].learn()
             agent_list[1].learn()
 
-            with open('MADdm_vs_random_train.csv', 'a') as myfile:
-                myfile.write('{0}|{1}|{2}|{3}\n'.format(i_episode, cumulative_rewards[0], cumulative_rewards[1], agent_list[0].get_eps()))
+            with open('MADdm_vs_DQN_train.csv', 'a') as myfile:
+                myfile.write('{0}|{1}|{2}|{3}|{4}\n'.format(i_episode, cumulative_rewards[0], cumulative_rewards[1], agent_list[0].get_eps(), turns))
 
         else:
-            if i_episode == episodes - 10000:
-                print('>>>>>>>>>>>>>>>>> Beginning Validation <<<<<<<<<<<<<<<<<<<')
+            if i_episode == episodes-10000:
                 agent_list[0].executionenv() 
                 agent_list[1].executionenv()
 
-                with open('MADdm_vs_random_test.csv', 'w+') as myfile:
-                    myfile.write('{0}|{1}|{2}\n'.format("Episode", "Reward1(MAD_DM)","Reward2(MAD_Random)"))
+                with open('MADdm_vs_DQN_test.csv', 'w+') as myfile:
+                    myfile.write('{0}|{1}|{2}|{3}\n'.format("Episode", "Reward1(MAD_DM)","Reward2(DQN)", turns))
                 cumulative_rewards[0] = 0
                 cumulative_rewards[1] = 0
 
-            with open('MADdm_vs_random_test.csv', 'a') as myfile:
-                myfile.write('{0}|{1}|{2}\n'.format(i_episode, cumulative_rewards[0], cumulative_rewards[1]))
+            with open('MADdm_vs_DQN_test.csv', 'a') as myfile:
+                myfile.write('{0}|{1}|{2}|{3}\n'.format(i_episode, cumulative_rewards[0], cumulative_rewards[1]), turns)
         
         
         print('Episode {} finished'.format(i_episode))

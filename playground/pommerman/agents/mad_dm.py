@@ -1,5 +1,5 @@
 from . import BaseAgent
-from RL_brain_admiraldm2 import AdmiralDMNetwork 
+from RL_brain_admiraldm2 import AdmiralDMNetwork #admiraldm2
 from .. import characters
 import os
 import sys
@@ -88,7 +88,7 @@ def featurize(obs):
 
 
 class MADdm(BaseAgent):
-    def __init__(self, nf, sess, *args, **kwargs):
+    def __init__(self, nf, sess, n_episodes, *args, **kwargs):
         super(MADdm, self).__init__(*args, **kwargs)
         self._recently_visited_positions = []
         self._recently_visited_length = 6
@@ -104,11 +104,14 @@ class MADdm(BaseAgent):
         self.action2 = 0
         self.eps = 0.8
         self.execution = False
+        self.n_episodes = n_episodes
 
 
     def set(self, action2):
         self.action2 = action2
 
+    def get_eps(self):
+        return self.eps
 
     def executionenv(self):
         self.execution = True
@@ -146,8 +149,8 @@ class MADdm(BaseAgent):
     def learn(self):
         self.RL.learn()
         self.counter = self.counter + 1
-        if self.counter <= 50000:
-            self.eps = self.linear_decay(self.counter, [0, int(50000 * 0.99), 50000], [0.8, 0.2, 0])
+        if self.counter <= self.n_episodes:
+            self.eps = self.linear_decay(self.counter, [0, int(self.n_episodes * 0.99), self.n_episodes], [0.8, 0.2, 0])
         else: 
             self.eps = 0
     

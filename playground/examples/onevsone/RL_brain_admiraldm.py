@@ -37,6 +37,8 @@ class AdmiralDMNetwork:
 
         self.memory = np.zeros((self.memory_size, n_features * 2 + 9))
 
+        tf.get_variable_scope().reuse_variables()
+
         self._build_net()
         t_params = tf.get_collection('Advisorq_target_net_params')
         e_params = tf.get_collection('Advisorq_eval_net_params')

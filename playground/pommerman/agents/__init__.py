@@ -26,3 +26,13 @@ from .advisor4admiralaeteamcomp import Advisor4admiralaeteamcomp
 from .advisor1admiraldmac import Advisor1admiraldmac 
 from .dqfd import DQfDAgent
 from .chat import CHATAgent
+
+# Add advisors here
+from .advisor_all_custom_ae import Advisor_all_custom_ae
+from .advisor_all_custom_ae2 import Advisor_all_custom_ae2
+from .advisor_near_bomb_ae import Advisor_near_bomb_ae
+from .advisor_near_enemy_ae import Advisor_near_enemy_ae
+from .advisor_near_powerup_ae import Advisor_near_powerup_ae
+
+from .mad_dm import MADdm
+from .mad_dm_no_as import MADdm_random

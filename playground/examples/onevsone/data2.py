@@ -32,8 +32,30 @@ import json
 tqdm.pandas()
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-def check_accuracy(preds, targets):
-    pass
+def check_accuracy(test_dataloader, model):
+    total = 0
+    correct = 0
+    for state, target in test_dataloader:
+        # print('------------------------------------------------------')
+        state = state.to(device)
+        target = target.numpy().reshape(-1)
+        with torch.no_grad():
+            logits = model(state).to('cpu').numpy().reshape(-1)
+
+        # print(logits, target)
+        if not np.any(target):
+            continue
+
+        total += 1
+        best = logits.argmax()
+        # print(best)
+        if target[best] != 0:
+            correct += 1
+
+        # print(total, correct)
+    
+    return correct/total
+        
 
 def state_to_np_array(row):
     keys_to_change = ['position', 'board', 'bomb_blast_strength', 'bomb_life', 'bomb_moving_direction', 'flame_life', 'ammo']
@@ -48,14 +70,17 @@ class ae_dataset(Dataset):
     def __init__(self, df):
         scaler = StandardScaler()
         # iterator=True, chunksize=1,
-        df['State'] = df['State'].progress_apply(literal_eval)
-        df['State'] = df['State'].map(np.array)
+        df['State_small'] = df['State_small'].progress_apply(literal_eval)
+        df['State_small'] = df['State_small'].map(np.array)
         df = df.reset_index()
+        print(f'df shape original: {df.shape[0]}')
+        df = df[df['State_small'].apply(lambda x: len(x) == 87)]
+        print(f'df shape after trimming: {df.shape[0]}')
         # self.df['State'] = self.df[['State', 'Advisor_used']].progress_apply(state_to_np_array, axis=1)
-        self.dataset = np.empty((df.shape[0], 205))
+        self.dataset = np.empty((df.shape[0], 26))
         for i, row in tqdm(df.iterrows(), total=df.shape[0]):
-            # print(row['State'].shape)
-            new_row = np.concatenate([row['State'], np.array([row['Advisor0_correct'], row['Advisor1_correct'], row['Advisor2_correct'], row['Advisor3_correct']])]).ravel()
+            new_row = np.concatenate([row['State_small'], np.array([row['Advisor0_correct'], row['Advisor1_correct'], row['Advisor2_correct']])]).ravel()
+            # print(new_row.shape)
             self.dataset[i,:] = new_row
         
 
@@ -67,13 +92,13 @@ class ae_dataset(Dataset):
         return self.dataset.shape[0]
 
     def __getitem__(self, idx):
-        return torch.FloatTensor(self.dataset[idx, :-4]), torch.FloatTensor(self.dataset[idx, -4:])
+        return torch.FloatTensor(self.dataset[idx, :-3]), torch.FloatTensor(self.dataset[idx, -3:])
 
 path='pommermanonevsonecustomallvs1_states_final.csv'
 train, test = train_test_split(pd.read_csv(path,  sep='|', index_col=None).sample(frac=0.5), test_size=0.1)
 print(train)
 
-epochs = 10
+epochs = 20
 dataset_train = ae_dataset(train)
 dataset_test = ae_dataset(test)
 train_loader = DataLoader(dataset_train, batch_size=512, shuffle=True, drop_last=True)
@@ -111,16 +136,16 @@ print(torch.sigmoid(output_list[-1]))
 y_test = []
 y_pred_list = []
 model.eval()
-with torch.no_grad():
-    for X_batch, y_batch in tqdm(test_loader):
-        y_test = y_test + list(y_batch)
-        X_batch = X_batch.to(device)
-        y_test_pred = model(X_batch)
-        y_pred_tag = torch.round(y_test_pred)
-        y_pred_list.append(y_pred_tag.cpu().numpy())
-y_pred_list = [a.squeeze().tolist() for a in y_pred_list]
-accuracy = sum([np.abs(a-b) for a, b in zip(y_test, y_pred_list)]) / len(y_test)
-print(f'accuracy: {accuracy}')
-print(confusion_matrix(y_test, y_pred_list))  
-print(classification_report(y_test, y_pred_list))
+print(check_accuracy(test_loader, model))
+
+counts = [0]*3
+for output in outputs:
+    np_out = output.cpu().detach().numpy().reshape(-1)
+    i = np_out.argmax()
+    counts[i] += 1
+
+print(counts)
+
+model = model.to('cpu')
+torch.save(model.state_dict(), 'selection_model.pth')
 

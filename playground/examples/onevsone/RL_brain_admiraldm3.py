@@ -6,17 +6,18 @@ tf.disable_v2_behavior()
 np.random.seed(1)
 tf.set_random_seed(1)
 
-class AdmiralaeNetwork:
+
+class AdmiralDMNetwork:
     def __init__(
             self,
-            sess,
+            sess, 
             n_actions,
             n_features,
             learning_rate=0.01,
             reward_decay=0.9,
             e_greedy=0.9,
             replace_target_iter=10,
-            memory_size=200,
+            memory_size=500,
             batch_size=32,
             e_greedy_increment=None,
             output_graph=False,
@@ -37,8 +38,8 @@ class AdmiralaeNetwork:
         self.memory = np.zeros((self.memory_size, n_features * 2 + 5))
 
         self._build_net()
-        t_params = tf.get_collection('Advisorae_target_net_params')
-        e_params = tf.get_collection('Advisorae_eval_net_params')
+        t_params = tf.get_collection('Advisorq3_target_net_params')
+        e_params = tf.get_collection('Advisorq3_eval_net_params')
         self.replace_target_op = [tf.assign(t, e) for t, e in zip(t_params, e_params)]
 
 
@@ -59,65 +60,66 @@ class AdmiralaeNetwork:
 
     def _build_net(self):
         # ------------------ build evaluate_net ------------------
-        self.s = tf.placeholder(tf.float32, [None, self.n_features+1], name='Advisorae_s')  
-        self.q_target = tf.placeholder(tf.float32, [None, self.n_actions], name='Advisorae_Q_target')  
-        with tf.variable_scope('AdmiralaeValue'): 
+        self.s = tf.placeholder(tf.float32, [None, self.n_features+1], name='Advisorq3_s')  
+        self.q_target = tf.placeholder(tf.float32, [None, self.n_actions], name='Advisorq3_Q_target')  
+        with tf.variable_scope('AdmiralValue'):
             self.name_scope = tf.get_variable_scope().name
-            with tf.variable_scope('Advisorae_eval_net'):
+            with tf.variable_scope('Advisorq3_eval_net'):
                 c_names, n_l1, w_initializer, b_initializer = \
-                    ['Advisorae_eval_net_params', tf.GraphKeys.GLOBAL_VARIABLES], 50, \
+                    ['Advisorq3_eval_net_params', tf.GraphKeys.GLOBAL_VARIABLES], 50, \
                     tf.random_normal_initializer(0., 0.3), tf.constant_initializer(0.1)  
 
-                with tf.variable_scope('Advisorae_l1'):
-                    w1 = tf.get_variable('Advisorae_w1', [self.n_features+1, n_l1], initializer=w_initializer, collections=c_names)
-                    b1 = tf.get_variable('Advisorae_b1', [1, n_l1], initializer=b_initializer, collections=c_names)
+                with tf.variable_scope('Advisorq3_l1'):
+                    w1 = tf.get_variable('Advisorq3_w1', [self.n_features+1, n_l1], initializer=w_initializer, collections=c_names)
+                    b1 = tf.get_variable('Advisorq3_b1', [1, n_l1], initializer=b_initializer, collections=c_names)
                     l1 = tf.nn.relu(tf.matmul(self.s, w1) + b1)
 
-                with tf.variable_scope('Advisorae_hl1'):
-                    wh1 = tf.get_variable('Advisorae_hw1', [n_l1, n_l1], initializer=w_initializer, collections=c_names)
-                    bh1 = tf.get_variable('Advisorae_hb1', [1, n_l1], initializer=b_initializer, collections=c_names)
+                with tf.variable_scope('Advisorq3_lh1'):
+                    wh1 = tf.get_variable('Advisorq3_wh1', [n_l1, n_l1], initializer=w_initializer, collections=c_names)
+                    bh1 = tf.get_variable('Advisorq3_bh1', [1, n_l1], initializer=b_initializer, collections=c_names)
                     lh1 = tf.nn.relu(tf.matmul(l1, wh1) + bh1)
                 
-                with tf.variable_scope('Advisorae_l2'):
-                    w2 = tf.get_variable('Advisorae_w2', [n_l1, self.n_actions], initializer=w_initializer, collections=c_names)
-                    b2 = tf.get_variable('Advisorae_b2', [1, self.n_actions], initializer=b_initializer, collections=c_names)
+                with tf.variable_scope('Advisorq3_l2'):
+                    w2 = tf.get_variable('Advisorq3_w2', [n_l1, self.n_actions], initializer=w_initializer, collections=c_names)
+                    b2 = tf.get_variable('Advisorq3_b2', [1, self.n_actions], initializer=b_initializer, collections=c_names)
                     self.q_eval = tf.matmul(lh1, w2) + b2
 
-            with tf.variable_scope('Advisorae_loss'):
+            with tf.variable_scope('Advisorq3_loss'):
                 self.loss = tf.reduce_mean(tf.squared_difference(self.q_target, self.q_eval))
-            with tf.variable_scope('Advisorae_train'):
+            with tf.variable_scope('Advisorq3_train'):
                 self._train_op = tf.train.RMSPropOptimizer(self.lr).minimize(self.loss)
 
-            # ------------------ build target_net ------------------
-            self.s_ = tf.placeholder(tf.float32, [None, self.n_features+1], name='Advisorae_s_')    
-            with tf.variable_scope('Advisorae_target_net'):
-                c_names = ['Advisorae_target_net_params', tf.GraphKeys.GLOBAL_VARIABLES]
+            self.s_ = tf.placeholder(tf.float32, [None, self.n_features+1], name='Advisorq3_s_')    
+            with tf.variable_scope('Advisorq3_target_net'):
+                c_names = ['Advisorq3_target_net_params', tf.GraphKeys.GLOBAL_VARIABLES]
 
-                with tf.variable_scope('Advisorae_l1'):
-                    w1 = tf.get_variable('Advisorae_w1', [self.n_features+1, n_l1], initializer=w_initializer, collections=c_names)
-                    b1 = tf.get_variable('Advisorae_b1', [1, n_l1], initializer=b_initializer, collections=c_names)
+                with tf.variable_scope('Advisorq3_l1'):
+                    w1 = tf.get_variable('Advisorq3_w1', [self.n_features+1, n_l1], initializer=w_initializer, collections=c_names)
+                    b1 = tf.get_variable('Advisorq3_b1', [1, n_l1], initializer=b_initializer, collections=c_names)
                     l1 = tf.nn.relu(tf.matmul(self.s_, w1) + b1)
-                
-                with tf.variable_scope('Advisorae_hl1'):
-                    wh1 = tf.get_variable('Advisorae_hw1', [n_l1, n_l1], initializer=w_initializer, collections=c_names)
-                    bh1 = tf.get_variable('Advisorae_hb1', [1, n_l1], initializer=b_initializer, collections=c_names)
-                    lh1 = tf.nn.relu(tf.matmul(l1, wh1) + bh1)
 
-                with tf.variable_scope('Advisorae_l2'):
-                    w2 = tf.get_variable('Advisorae_w2', [n_l1, self.n_actions], initializer=w_initializer, collections=c_names)
-                    b2 = tf.get_variable('Advisorae_b2', [1, self.n_actions], initializer=b_initializer, collections=c_names)
+                with tf.variable_scope('Advisorq3_lh1'):
+                    wh1 = tf.get_variable('Advisorq3_wh1', [n_l1, n_l1], initializer=w_initializer, collections=c_names)
+                    bh1 = tf.get_variable('Advisorq3_bh1', [1, n_l1], initializer=b_initializer, collections=c_names)
+                    lh1 = tf.nn.relu(tf.matmul(l1, wh1) + bh1)
+                
+                
+                with tf.variable_scope('Advisorq3_l2'):
+                    w2 = tf.get_variable('Advisorq3_w2', [n_l1, self.n_actions], initializer=w_initializer, collections=c_names)
+                    b2 = tf.get_variable('Advisorq3_b2', [1, self.n_actions], initializer=b_initializer, collections=c_names)
                     self.q_next = tf.matmul(lh1, w2) + b2
 
-    def store_transition(self, s, a, a1, r, s_, a_, a1_):
+    def store_transition(self, s, a, a1, a2, r, s_, a_):
         if not hasattr(self, 'memory_counter'):
             self.memory_counter = 0
+
         s = list(s)
         a1 = float(a1)
         s.append(a1)
         s=np.array(s)
         s_ = list(s_)
-        a1_ = float(a1_)
-        s_.append(a1_)
+        a2 = float(a2)
+        s_.append(a2)
         s_=np.array(s_)
 
         transition = np.hstack((s, [a, r, a_], s_))
@@ -127,8 +129,9 @@ class AdmiralaeNetwork:
 
         self.memory_counter += 1
 
-    def choose_action(self, observation, a2):
-        
+    def choose_action(self, observation, a2, execution=False):
+        if execution==True:
+            self.epsilon = 1
         observation = list(observation)
         a2 = float(a2)
         observation.append(a2)
@@ -165,7 +168,6 @@ class AdmiralaeNetwork:
         eval_act_index = batch_memory[:, self.n_features+1].astype(int)
         reward = batch_memory[:, self.n_features + 2]
         q_target[batch_index, eval_act_index] = reward + self.gamma * q_next[0][a_]
-
 
         _, self.cost = self.sess.run([self._train_op, self.loss],
                                      feed_dict={self.s: batch_memory[:, :(self.n_features+1)],

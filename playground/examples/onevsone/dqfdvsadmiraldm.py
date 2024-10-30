@@ -136,61 +136,61 @@ def main():
     cumulative_rewards = []
     cumulative_rewards.append(0)
     cumulative_rewards.append(0)    
-    for i_episode in range(50000):
-        state = env.reset()
-        done = False
-        actions = env.act(state)    
-        while not done:
-            state_new, reward, done, info = env.step(actions)
-            actions_new = env.act(state_new)    
-            agent_list[0].store(state[0], actions[0], actions[1], actions_new[1], reward[0], state_new[0], actions_new[0])
-            agent_list[1].run_DQfD(state[1], actions[1], reward[1], state_new[1], done)
-            state = state_new
-            actions = actions_new
-            agent_list[0].set(actions_new[1])
-        agent_list[0].learn()
-        agent_list[1].restorevalue()
-        print("The rewards are", reward)
-        cumulative_rewards[0] = cumulative_rewards[0] + reward[0]
-        cumulative_rewards[1] = cumulative_rewards[1] + reward[1]
+    # for i_episode in range(50000):
+    #     state = env.reset()
+    #     done = False
+    #     actions = env.act(state)    
+    #     while not done:
+    #         state_new, reward, done, info = env.step(actions)
+    #         actions_new = env.act(state_new)    
+    #         agent_list[0].store(state[0], actions[0], actions[1], actions_new[1], reward[0], state_new[0], actions_new[0])
+    #         agent_list[1].run_DQfD(state[1], actions[1], reward[1], state_new[1], done)
+    #         state = state_new
+    #         actions = actions_new
+    #         agent_list[0].set(actions_new[1])
+    #     agent_list[0].learn()
+    #     agent_list[1].restorevalue()
+    #     print("The rewards are", reward)
+    #     cumulative_rewards[0] = cumulative_rewards[0] + reward[0]
+    #     cumulative_rewards[1] = cumulative_rewards[1] + reward[1]
     
-        with open('pommermanonevsoneexpert1dqfd.csv', 'a') as myfile:
-            myfile.write('{0},{1},{2}\n'.format(i_episode, cumulative_rewards[0], cumulative_rewards[1]))
-        print('Episode {} finished'.format(i_episode))
-    env.close()
+    #     with open('pommermanonevsoneexpert1dqfd.csv', 'a') as myfile:
+    #         myfile.write('{0},{1},{2}\n'.format(i_episode, cumulative_rewards[0], cumulative_rewards[1]))
+    #     print('Episode {} finished'.format(i_episode))
+    # env.close()
 
 
     # Code for Loop that does both training and execution. 
-    #for i_episode in range(60000):
-    #    state = env.reset()
-    #    done = False
-    #    actions = env.act(state)    
-    #    while not done:
-    #        state_new, reward, done, info = env.step(actions)
-    #        actions_new = env.act(state_new)    
-    #        if i_episode < 50000:
-    #            agent_list[0].store(state[0], actions[0], actions[1], actions_new[1], reward[0], state_new[0], actions_new[0])
-    #            agent_list[1].run_DQfD(state[1], actions[1], reward[1], state_new[1], done)
-    #        state = state_new
-    #        actions = actions_new
-    #        agent_list[0].set(actions_new[1])
+    for i_episode in range(60000):
+       state = env.reset()
+       done = False
+       actions = env.act(state)    
+       while not done:
+           state_new, reward, done, info = env.step(actions)
+           actions_new = env.act(state_new)    
+           if i_episode < 50000:
+               agent_list[0].store(state[0], actions[0], actions[1], actions_new[1], reward[0], state_new[0], actions_new[0])
+               agent_list[1].run_DQfD(state[1], actions[1], reward[1], state_new[1], done)
+           state = state_new
+           actions = actions_new
+           agent_list[0].set(actions_new[1])
 
-    #    if i_episode < 50000:
-    #        agent_list[0].learn()
-    #        agent_list[1].restorevalue()
+       if i_episode < 50000:
+           agent_list[0].learn()
+           agent_list[1].restorevalue()
 
-    #    if i_episode == 49999: 
-    #        agent_list[0].executionenv()
-    #        agent_list[1].executionenv()
-    #    
-    #    print("The rewards are", reward)
-    #    cumulative_rewards[0] = cumulative_rewards[0] + reward[0]
-    #    cumulative_rewards[1] = cumulative_rewards[1] + reward[1]
-    #
-    #    with open('pommermanonevsoneexpert1dqfd.csv', 'a') as myfile:
-    #        myfile.write('{0},{1},{2}\n'.format(i_episode, cumulative_rewards[0], cumulative_rewards[1]))
-    #    print('Episode {} finished'.format(i_episode))
-    #env.close()
+       if i_episode == 49999: 
+           agent_list[0].executionenv()
+           agent_list[1].executionenv()
+       
+       print("The rewards are", reward)
+       cumulative_rewards[0] = cumulative_rewards[0] + reward[0]
+       cumulative_rewards[1] = cumulative_rewards[1] + reward[1]
+    
+       with open('pommermanonevsoneexpert1dqfd.csv', 'a') as myfile:
+           myfile.write('{0},{1},{2}\n'.format(i_episode, cumulative_rewards[0], cumulative_rewards[1]))
+       print('Episode {} finished'.format(i_episode))
+    env.close()
 
 
 
